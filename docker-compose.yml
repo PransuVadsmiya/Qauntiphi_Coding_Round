@@ -1,0 +1,29 @@
+# Run the whole app with:  docker compose up --build
+# Then open http://localhost:8080
+services:
+  backend:
+    build: ./backend
+    container_name: devfolio-backend
+    env_file:
+      - path: ./backend/.env        # GITHUB_TOKEN, DEFAULT_GITHUB_USER, LLM_* (copy from .env.example)
+        required: false
+    environment:
+      DB_PATH: /data/portfolio_cache.db
+    volumes:
+      - sqlite-cache:/data          # SQLite cache persists across restarts
+    ports:
+      - "8000:8000"                 # optional: exposes the API docs at http://localhost:8000/docs
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: devfolio-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy  # wait until the API answers /api/health
+    restart: unless-stopped
+
+volumes:
+  sqlite-cache:

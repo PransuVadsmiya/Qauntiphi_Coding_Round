@@ -104,10 +104,39 @@ Forked repos are excluded so the score reflects the developer's own code.
 | Data | GitHub REST + GraphQL APIs |
 | LLM (optional) | Gemini / Groq / OpenAI |
 | Tests | pytest with a mocked GitHub API |
+| Deployment | Docker, docker compose, nginx (reverse proxy for `/api`) |
 
 ## Setup
 
-### 1. Backend
+### Option A: Docker (one command)
+
+The app is containerized as two services:
+
+| Service | Image | What it does |
+|---|---|---|
+| `backend` | `python:3.12-slim` | FastAPI on port 8000, runs as a non-root user, with a health check on `/api/health`. The SQLite cache lives on the named volume `sqlite-cache`, so it survives restarts and rebuilds |
+| `frontend` | multi-stage: `node:20-alpine` builds the React app → `nginx:1.27-alpine` serves it | nginx serves the static build and proxies `/api/*` to the backend container, so the browser talks to one origin (no CORS). Starts only after the backend is healthy |
+
+```bash
+cp backend/.env.example backend/.env      # Windows: copy backend\.env.example backend\.env
+# put your GITHUB_TOKEN (and optionally LLM_API_KEY) in backend/.env
+docker compose up --build
+```
+Open **http://localhost:8080**. API docs are at http://localhost:8000/docs.
+
+Useful commands:
+```bash
+docker compose up -d --build     # run in the background
+docker compose logs -f backend   # follow backend logs
+docker compose down              # stop (cache volume is kept)
+docker compose down -v           # stop and wipe the SQLite cache
+```
+
+`backend/.env` is optional for Docker: without it the app still starts, but the contribution graph needs `GITHUB_TOKEN` and the chatbot features fall back to rule-based answers.
+
+### Option B: Run locally without Docker
+
+#### 1. Backend
 ```bash
 cd backend
 python -m venv .venv
@@ -126,7 +155,7 @@ uvicorn app.main:app --reload --port 8000
 ```
 API docs: http://localhost:8000/docs
 
-### 2. Frontend
+#### 2. Frontend
 ```bash
 cd frontend
 npm install
@@ -134,7 +163,7 @@ npm run dev
 ```
 Open http://localhost:5173. The dev server proxies `/api` to the backend.
 
-### 3. Tests
+#### 3. Tests
 ```bash
 cd backend
 pytest
@@ -159,7 +188,9 @@ All `GET` data endpoints accept `?refresh=true` to bypass the cache.
 ## Project structure
 
 ```
+docker-compose.yml       runs backend + frontend containers
 backend/
+  Dockerfile             python:3.12-slim, non-root, health check
   app/
     main.py                FastAPI app and routers
     config.py              environment settings
@@ -178,6 +209,8 @@ backend/
     routers/               portfolio, match, assistant, settings
   tests/                   pytest suite with a mocked GitHub API
 frontend/
+  Dockerfile             node build stage → nginx serve stage
+  nginx.conf             static files + /api proxy to the backend
   src/
     App.jsx
     api.js

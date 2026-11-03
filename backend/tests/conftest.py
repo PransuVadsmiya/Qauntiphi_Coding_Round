@@ -79,6 +79,7 @@ class FakeGitHub:
 def fake_github(tmp_path, monkeypatch):
     monkeypatch.setattr(config.settings, "db_path", tmp_path / "test.db")
     monkeypatch.setattr(config.Settings, "github_token", "test-token")
+    monkeypatch.setattr(config.Settings, "llm_provider", "none")  # tests never call a real LLM
     init_db()
     fake = FakeGitHub()
     sync.set_client(GitHubClient(transport=httpx.MockTransport(fake.handler)))

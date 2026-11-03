@@ -7,6 +7,8 @@ import GapCoach from "./components/GapCoach";
 import MatchPanel, { MatchBadge } from "./components/MatchPanel";
 import ProfileHeader from "./components/ProfileHeader";
 import RepoGrid from "./components/RepoGrid";
+import Skeleton from "./components/Skeleton";
+import useTheme from "./useTheme";
 
 const EMPTY_STREAKS = { current: 0, longest: 0, total: 0, active_days: 0 };
 const NO_COACH = { data: null, loading: false, error: "" };
@@ -29,6 +31,7 @@ function cleanUsername(raw) {
 }
 
 export default function App() {
+  const [theme, toggleTheme] = useTheme();
   const [login, setLogin] = useState("");
   const [input, setInput] = useState("");
   const [profile, setProfile] = useState(null);
@@ -149,9 +152,20 @@ export default function App() {
   return (
     <div className="app">
       <nav className="topbar">
-        <span className="brand">◆ DevFolio</span>
+        <span className="brand">
+          <span className="brand-mark">◆</span>
+          DevFolio <small>GitHub portfolio</small>
+        </span>
         <form onSubmit={submit} className="search">
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="GitHub username" />
+          <label className="search-field">
+            <span aria-hidden="true">@</span>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="GitHub username"
+              aria-label="GitHub username"
+            />
+          </label>
           <button
             disabled={loading || !input.trim()}
             title="Show this user's portfolio. Uses the SQLite cache if it was synced within the last hour."
@@ -172,14 +186,34 @@ export default function App() {
             <span className="muted small">Last synced {syncedAgo}</span>
           </div>
         )}
+        <button
+          className="ghost icon"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? "☀️" : "🌙"}
+        </button>
       </nav>
 
       <main>
         {error && <div className="alert">{error}</div>}
+        {!profile && loading && <Skeleton />}
         {!profile && !loading && !error && (
           <div className="empty card">
-            <h2>Build your developer portfolio</h2>
-            <p className="muted">Enter a GitHub username above to load profile stats, repositories and contribution activity.</p>
+            <div className="hero-mark">◆</div>
+            <h2>Your GitHub, as a portfolio</h2>
+            <p className="muted">
+              Enter a GitHub username above to see contribution activity, repository stats, top languages and how
+              well the tech stack matches a job description.
+            </p>
+            <div className="feature-list">
+              <span className="pill">🔥 Contribution heatmap</span>
+              <span className="pill">📦 Repo cards</span>
+              <span className="pill">🎯 JD match score</span>
+              <span className="pill">💬 Portfolio chatbot</span>
+              <span className="pill">✨ Gap coach</span>
+            </div>
           </div>
         )}
 
@@ -244,11 +278,11 @@ export default function App() {
 
       {cacheInfo && (
         <footer className="cache-bar">
-          <span>⚡ Loaded in {loadMs} ms</span>
-          <span>SQLite cache TTL {Math.round(cacheInfo.ttl_seconds / 60)} min</span>
-          <span>GitHub calls this session: {cacheInfo.network_calls}</span>
-          <span>304 Not Modified hits: {cacheInfo.not_modified_hits}</span>
-          {cacheInfo.rate_limit_remaining != null && <span>Rate limit left: {cacheInfo.rate_limit_remaining}</span>}
+          <span>⚡ Loaded in <b>{loadMs} ms</b></span>
+          <span>SQLite TTL <b>{Math.round(cacheInfo.ttl_seconds / 60)} min</b></span>
+          <span>GitHub calls <b>{cacheInfo.network_calls}</b></span>
+          <span>304 hits <b>{cacheInfo.not_modified_hits}</b></span>
+          {cacheInfo.rate_limit_remaining != null && <span>Rate limit left <b>{cacheInfo.rate_limit_remaining}</b></span>}
         </footer>
       )}
     </div>

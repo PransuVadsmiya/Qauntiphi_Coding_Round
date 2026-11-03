@@ -16,6 +16,7 @@ export function RepoCard({ repo, highlighted }) {
       <div className="repo-title">
         <span className="repo-name">{repo.name}</span>
         {repo.is_fork && <span className="pill">fork</span>}
+        {highlighted && <span className="match-flag">✓ matches JD</span>}
       </div>
       <p className="repo-desc">{repo.description || <span className="muted">No description provided.</span>}</p>
       {repo.topics?.length > 0 && (

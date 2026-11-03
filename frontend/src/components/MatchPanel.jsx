@@ -53,7 +53,7 @@ export default function MatchPanel({ jd, setJd, result, loading, error, onAnalyz
   return (
     <section className="card" id="match-panel">
       <div className="section-head">
-        <h2>🎯 Tech Stack Compatibility</h2>
+        <h2>🎯 Tech Stack Compatibility <span className="muted small">paste a job description to score this profile</span></h2>
         <button className="ghost" onClick={() => setOpen(!open)}>{open ? "Hide" : "Show"}</button>
       </div>
       {open && (

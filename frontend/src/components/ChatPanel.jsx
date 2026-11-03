@@ -26,6 +26,15 @@ export default function ChatPanel({ login }) {
     if (open && body) body.scrollTop = body.scrollHeight;
   }, [messages, busy, open]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const send = async (text) => {
     const msg = text.trim();
     if (!msg || busy) return;
@@ -45,14 +54,21 @@ export default function ChatPanel({ login }) {
 
   return (
     <>
-      <button className="chat-fab" onClick={() => setOpen(!open)} aria-label="Ask my Portfolio">
-        {open ? "✕" : "💬 Ask my Portfolio"}
-      </button>
+      {!open && (
+        <button className="chat-fab" onClick={() => setOpen(true)} aria-label="Ask my Portfolio">
+          💬 Ask my Portfolio
+        </button>
+      )}
       {open && (
         <div className="chat-window">
           <div className="chat-head">
-            <strong>Ask about @{login}</strong>
-            <span className="muted small">Answers come from the cached GitHub data</span>
+            <div>
+              <strong>Ask about @{login}</strong>
+              <span className="muted small">Answers come from the cached GitHub data</span>
+            </div>
+            <button className="ghost icon chat-close" onClick={() => setOpen(false)} aria-label="Close chat" title="Close">
+              ✕
+            </button>
           </div>
           <div className="chat-body">
             {messages.length === 0 && (

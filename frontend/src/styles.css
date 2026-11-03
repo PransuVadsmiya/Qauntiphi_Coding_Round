@@ -134,3 +134,35 @@ main { width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; 
   .search input { width: 150px; }
   .repo-grid { grid-template-columns: 1fr; }
 }
+
+/* match badge + panel */
+.badge-row { display: flex; justify-content: flex-end; margin-bottom: -8px; }
+.match-badge {
+  display: inline-flex; align-items: center; gap: 12px; text-align: left;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 999px; padding: 4px 18px 4px 4px;
+  --tone: var(--muted);
+}
+.match-badge.strong { --tone: var(--l4); } .match-badge.good { --tone: var(--accent-2); }
+.match-badge.partial { --tone: var(--warn); } .match-badge.low { --tone: var(--danger); }
+.match-badge { border-color: var(--tone); }
+.match-badge span { display: flex; flex-direction: column; }
+.match-badge strong { color: var(--tone); }
+.match-badge small { color: var(--muted); font-weight: 400; font-size: 11px; }
+.match-badge .ring-bg { fill: none; stroke: var(--border); stroke-width: 6; }
+.match-badge .ring { fill: none; stroke: var(--tone); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+.match-badge text { fill: var(--text); font: 700 14px "JetBrains Mono", monospace; }
+
+textarea { width: 100%; resize: vertical; line-height: 1.5; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.error-text { color: var(--danger); }
+.small { font-size: 12px; }
+.breakdown { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.chip.ok { color: var(--l4); border-color: var(--l2); background: rgba(57, 211, 83, .08); }
+.chip.mid { color: var(--warn); border-color: rgba(210, 153, 34, .5); background: rgba(210, 153, 34, .08); }
+.chip.bad { color: var(--danger); border-color: rgba(248, 81, 73, .5); background: rgba(248, 81, 73, .08); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+.breakdown { overflow-x: auto; }

@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .db import init_db
-from .routers import portfolio, settings as settings_router
+from .routers import match, portfolio, settings as settings_router
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -40,3 +40,4 @@ def health():
 
 app.include_router(portfolio.router)
 app.include_router(settings_router.router)
+app.include_router(match.router)

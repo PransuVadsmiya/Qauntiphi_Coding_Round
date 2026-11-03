@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import ContributionGraph from "./components/ContributionGraph";
+import MatchPanel, { MatchBadge } from "./components/MatchPanel";
 import ProfileHeader from "./components/ProfileHeader";
 import RepoGrid from "./components/RepoGrid";
 
@@ -17,6 +18,22 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [loadMs, setLoadMs] = useState(null);
+  const [jd, setJd] = useState("");
+  const [match, setMatch] = useState(null);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [matchError, setMatchError] = useState("");
+
+  const runMatch = useCallback(async (user, text) => {
+    setMatchLoading(true);
+    setMatchError("");
+    try {
+      setMatch(await api.match(user, text));
+    } catch (e) {
+      setMatchError(e.message);
+    } finally {
+      setMatchLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async (user, refresh = false) => {
     if (!user) return;
@@ -36,6 +53,13 @@ export default function App() {
         setContribError(e.message);
       }
       setCacheInfo(await api.cache(user));
+      // Restore the last job description saved in SQLite settings and re-score it.
+      setMatch(null);
+      const saved = await api.getSettings(user).catch(() => ({}));
+      if (saved.last_job_description) {
+        setJd(saved.last_job_description);
+        runMatch(user, saved.last_job_description);
+      }
       setLogin(user);
       setLoadMs(Math.round(performance.now() - t0));
       localStorage.setItem("lastUser", user);
@@ -44,7 +68,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [runMatch]);
 
   // Open the last viewed user, or the backend's default user.
   useEffect(() => {
@@ -92,13 +116,34 @@ export default function App() {
 
         {profile && (
           <>
+            {match && (
+              <div className="badge-row">
+                <MatchBadge
+                  result={match}
+                  onClick={() => document.getElementById("match-panel")?.scrollIntoView({ behavior: "smooth" })}
+                />
+              </div>
+            )}
             <ProfileHeader profile={profile} streaks={contrib.streaks} />
+            <MatchPanel
+              jd={jd}
+              setJd={setJd}
+              result={match}
+              loading={matchLoading}
+              error={matchError}
+              onAnalyze={() => runMatch(login, jd)}
+            />
             {contribError ? (
               <section className="card"><h2>Contribution activity</h2><p className="muted">{contribError}</p></section>
             ) : (
               <ContributionGraph days={contrib.days} streaks={contrib.streaks} />
             )}
-            <RepoGrid repos={repos} />
+            <RepoGrid
+              repos={repos}
+              highlightLanguages={
+                match ? match.technologies.filter((t) => t.status !== "missing").flatMap((t) => t.languages) : []
+              }
+            />
           </>
         )}
       </main>

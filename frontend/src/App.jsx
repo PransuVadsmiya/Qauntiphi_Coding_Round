@@ -92,6 +92,7 @@ export default function App() {
       if (!start) {
         try { start = (await api.health()).default_user; } catch {}
       }
+      start = (start || "").replace(/\s+/g, "");
       if (start) {
         setInput(start);
         load(start);
@@ -101,7 +102,15 @@ export default function App() {
 
   const submit = (e) => {
     e.preventDefault();
-    load(input.trim());
+    // Accept "PransuVadsmiya", "@PransuVadsmiya", "Pransu Vadsmiya" or a full profile URL.
+    const user = input
+      .trim()
+      .replace(/^https?:\/\/(www\.)?github\.com\//i, "")
+      .replace(/^@/, "")
+      .split(/[/?#]/)[0]
+      .replace(/\s+/g, "");
+    setInput(user);
+    load(user);
   };
 
   return (

@@ -65,7 +65,7 @@ class GitHubClient:
             return cached["body"]
 
         if resp.status_code == 404:
-            raise GitHubError(404, f"GitHub user or resource not found: {path}")
+            raise GitHubError(404, f"GitHub user not found ({path}). Check the username spelling.")
         if resp.status_code in (401, 403):
             # Rate-limited or bad token: fall back to stale cache if we have it.
             if cached:

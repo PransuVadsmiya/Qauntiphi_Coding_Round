@@ -34,3 +34,9 @@ def test_unknown_user_returns_404(fake_github):
 def test_settings_roundtrip(fake_github):
     client.put("/api/settings/octocat", json={"theme": "dark", "pinned": ["ml-lab"]})
     assert client.get("/api/settings/octocat").json() == {"theme": "dark", "pinned": ["ml-lab"]}
+
+
+def test_display_name_with_space_gives_clear_error(fake_github):
+    r = client.get("/api/profile/Pransu Vadsmiya")
+    assert r.status_code == 400
+    assert "not a valid GitHub username" in r.json()["detail"]

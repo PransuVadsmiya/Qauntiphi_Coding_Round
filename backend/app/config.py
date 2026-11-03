@@ -10,7 +10,7 @@ load_dotenv(BACKEND_DIR / ".env")
 
 class Settings:
     github_token: str = os.getenv("GITHUB_TOKEN", "").strip()
-    default_user: str = os.getenv("DEFAULT_GITHUB_USER", "").strip()
+    default_user: str = "".join(os.getenv("DEFAULT_GITHUB_USER", "").split())
 
     llm_provider: str = os.getenv("LLM_PROVIDER", "none").strip().lower()
     llm_api_key: str = os.getenv("LLM_API_KEY", "").strip()

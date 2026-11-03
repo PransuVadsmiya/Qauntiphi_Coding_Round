@@ -1,4 +1,5 @@
 """Core portfolio endpoints: profile header, repos, contributions, refresh."""
+import re
 import time
 
 from fastapi import APIRouter, HTTPException, Query
@@ -11,8 +12,18 @@ from ..services import sync
 router = APIRouter(prefix="/api", tags=["portfolio"])
 
 
+USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
+
+
 def _gh(fn, *args, **kwargs):
     """Translate GitHub errors into clean HTTP errors."""
+    login = args[0] if args else ""
+    if not USERNAME_RE.match(login):
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{login}' is not a valid GitHub username. Use the username from the profile URL "
+                   "(e.g. PransuVadsmiya), not the display name.",
+        )
     try:
         return fn(*args, **kwargs)
     except GitHubError as e:

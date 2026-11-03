@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import ContributionGraph from "./components/ContributionGraph";
 import MatchPanel, { MatchBadge } from "./components/MatchPanel";
+import ChatPanel from "./components/ChatPanel";
+import GapCoach from "./components/GapCoach";
 import ProfileHeader from "./components/ProfileHeader";
 import RepoGrid from "./components/RepoGrid";
 
@@ -22,6 +24,17 @@ export default function App() {
   const [match, setMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchError, setMatchError] = useState("");
+
+  const [coach, setCoach] = useState({ data: null, loading: false, error: "" });
+
+  const runCoach = async () => {
+    setCoach({ data: null, loading: true, error: "" });
+    try {
+      setCoach({ data: await api.gapCoach(login, jd), loading: false, error: "" });
+    } catch (e) {
+      setCoach({ data: null, loading: false, error: e.message });
+    }
+  };
 
   const runMatch = useCallback(async (user, text) => {
     setMatchLoading(true);
@@ -55,6 +68,7 @@ export default function App() {
       setCacheInfo(await api.cache(user));
       // Restore the last job description saved in SQLite settings and re-score it.
       setMatch(null);
+      setCoach({ data: null, loading: false, error: "" });
       const saved = await api.getSettings(user).catch(() => ({}));
       if (saved.last_job_description) {
         setJd(saved.last_job_description);
@@ -132,6 +146,13 @@ export default function App() {
               loading={matchLoading}
               error={matchError}
               onAnalyze={() => runMatch(login, jd)}
+              onCoach={runCoach}
+            />
+            <GapCoach
+              data={coach.data}
+              loading={coach.loading}
+              error={coach.error}
+              onClose={() => setCoach({ data: null, loading: false, error: "" })}
             />
             {contribError ? (
               <section className="card"><h2>Contribution activity</h2><p className="muted">{contribError}</p></section>
@@ -147,6 +168,8 @@ export default function App() {
           </>
         )}
       </main>
+
+      {profile && <ChatPanel login={login} />}
 
       {cacheInfo && (
         <footer className="cache-bar">

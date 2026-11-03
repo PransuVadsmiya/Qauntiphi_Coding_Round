@@ -131,8 +131,12 @@ button.icon { width: 38px; height: 38px; padding: 0; display: inline-grid; place
 .search-field { position: relative; }
 .search-field span { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .search-field input { width: 240px; padding-left: 30px; }
-.sync { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
-.sync .small { font-size: 11px; }
+.sync { display: flex; flex-direction: row-reverse; align-items: center; gap: 10px; }
+.sync .small { font-size: 11px; white-space: nowrap; }
+/* every control in the top bar shares one height so they line up exactly */
+.topbar input, .topbar button { height: 38px; margin: 0; line-height: 1; }
+.topbar button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.search, .search-field { display: flex; align-items: center; }
 
 main { width: 100%; max-width: 1180px; margin: 0 auto; padding: 24px 16px 96px; display: flex; flex-direction: column; gap: 20px; }
 
@@ -313,7 +317,7 @@ blockquote { margin: 8px 0; padding: 12px 14px; border-left: 3px solid var(--acc
   .header-badge { justify-content: flex-start; margin: 0; }
   .topbar { padding: 10px 16px; }
   .search-field input { width: 160px; }
-  .sync { align-items: flex-start; }
+  .sync .small { display: none; }
   .repo-grid { grid-template-columns: 1fr; }
   .coach-grid { grid-template-columns: 1fr; }
   .cache-bar { gap: 10px; font-size: 11px; }

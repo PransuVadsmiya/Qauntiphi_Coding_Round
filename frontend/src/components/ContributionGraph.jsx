@@ -50,7 +50,7 @@ export default function ContributionGraph({ days, streaks }) {
 
       <div className="heatmap-scroll">
         <div className="heatmap">
-          <div className="months" style={{ gridTemplateColumns: `repeat(${weeks.length}, 13px)` }}>
+          <div className="months" style={{ gridTemplateColumns: `repeat(${weeks.length}, 16px)` }}>
             {monthLabels.map((m) => (
               <span key={m.index} style={{ gridColumn: m.index + 1 }}>{m.label}</span>
             ))}

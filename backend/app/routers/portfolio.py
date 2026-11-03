@@ -42,6 +42,9 @@ def get_profile(login: str, refresh: bool = Query(False)):
             "followers": user.get("followers", 0),
             "following": user.get("following", 0),
             "public_repos": user.get("public_repos", 0),
+            # public_repos from GitHub includes forks; the cards show originals by default.
+            "original_repos": sum(1 for r in repos if not r["is_fork"]),
+            "forked_repos": sum(1 for r in repos if r["is_fork"]),
             "total_stars": stats.total_stars(repos),
             "total_forks": stats.total_forks(repos),
         },

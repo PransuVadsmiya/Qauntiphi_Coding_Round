@@ -1,13 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
-import ContributionGraph from "./components/ContributionGraph";
-import MatchPanel, { MatchBadge } from "./components/MatchPanel";
 import ChatPanel from "./components/ChatPanel";
+import ContributionGraph from "./components/ContributionGraph";
+import ErrorBoundary from "./components/ErrorBoundary";
 import GapCoach from "./components/GapCoach";
+import MatchPanel, { MatchBadge } from "./components/MatchPanel";
 import ProfileHeader from "./components/ProfileHeader";
 import RepoGrid from "./components/RepoGrid";
 
 const EMPTY_STREAKS = { current: 0, longest: 0, total: 0, active_days: 0 };
+const NO_COACH = { data: null, loading: false, error: "" };
+
+function ago(seconds) {
+  if (seconds == null) return "never";
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  return `${Math.floor(seconds / 3600)} h ago`;
+}
+
+function cleanUsername(raw) {
+  // Accept "PransuVadsmiya", "@PransuVadsmiya", "Pransu Vadsmiya" or a full profile URL.
+  return (raw || "")
+    .trim()
+    .replace(/^https?:\/\/(www\.)?github\.com\//i, "")
+    .replace(/^@/, "")
+    .split(/[/?#]/)[0]
+    .replace(/\s+/g, "");
+}
 
 export default function App() {
   const [login, setLogin] = useState("");
@@ -20,21 +39,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [loadMs, setLoadMs] = useState(null);
+  const [repoPrefs, setRepoPrefs] = useState({});
+
   const [jd, setJd] = useState("");
   const [match, setMatch] = useState(null);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchError, setMatchError] = useState("");
-
-  const [coach, setCoach] = useState({ data: null, loading: false, error: "" });
-
-  const runCoach = async () => {
-    setCoach({ data: null, loading: true, error: "" });
-    try {
-      setCoach({ data: await api.gapCoach(login, jd), loading: false, error: "" });
-    } catch (e) {
-      setCoach({ data: null, loading: false, error: e.message });
-    }
-  };
+  const [coach, setCoach] = useState(NO_COACH);
 
   const runMatch = useCallback(async (user, text) => {
     setMatchLoading(true);
@@ -48,6 +59,20 @@ export default function App() {
     }
   }, []);
 
+  const runCoach = async () => {
+    setCoach({ ...NO_COACH, loading: true });
+    try {
+      setCoach({ ...NO_COACH, data: await api.gapCoach(login, jd) });
+    } catch (e) {
+      setCoach({ ...NO_COACH, error: e.message });
+    }
+  };
+
+  /**
+   * View profile (refresh=false): served from the SQLite cache when it is
+   * younger than the TTL, so it is instant and costs no GitHub calls.
+   * Sync from GitHub (refresh=true): ignores the cache and re-downloads now.
+   */
   const load = useCallback(async (user, refresh = false) => {
     if (!user) return;
     setLoading(true);
@@ -66,17 +91,21 @@ export default function App() {
         setContribError(e.message);
       }
       setCacheInfo(await api.cache(user));
-      // Restore the last job description saved in SQLite settings and re-score it.
+      setLogin(user);
+      setLoadMs(Math.round(performance.now() - t0));
+      try { localStorage.setItem("lastUser", user); } catch {}
+
+      // Restore this user's settings from SQLite: repo view prefs + last job description.
       setMatch(null);
-      setCoach({ data: null, loading: false, error: "" });
+      setCoach(NO_COACH);
       const saved = await api.getSettings(user).catch(() => ({}));
+      setRepoPrefs(saved.repo_prefs || {});
       if (saved.last_job_description) {
         setJd(saved.last_job_description);
         runMatch(user, saved.last_job_description);
+      } else {
+        setJd("");
       }
-      setLogin(user);
-      setLoadMs(Math.round(performance.now() - t0));
-      localStorage.setItem("lastUser", user);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -92,7 +121,7 @@ export default function App() {
       if (!start) {
         try { start = (await api.health()).default_user; } catch {}
       }
-      start = (start || "").replace(/\s+/g, "");
+      start = cleanUsername(start);
       if (start) {
         setInput(start);
         load(start);
@@ -102,16 +131,20 @@ export default function App() {
 
   const submit = (e) => {
     e.preventDefault();
-    // Accept "PransuVadsmiya", "@PransuVadsmiya", "Pransu Vadsmiya" or a full profile URL.
-    const user = input
-      .trim()
-      .replace(/^https?:\/\/(www\.)?github\.com\//i, "")
-      .replace(/^@/, "")
-      .split(/[/?#]/)[0]
-      .replace(/\s+/g, "");
+    const user = cleanUsername(input);
     setInput(user);
     load(user);
   };
+
+  const updateRepoPrefs = (prefs) => {
+    setRepoPrefs(prefs);
+    api.saveSettings(login, { repo_prefs: prefs }).catch(() => {});
+  };
+
+  const scrollToMatch = () =>
+    document.getElementById("match-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const syncedAgo = cacheInfo ? ago(cacheInfo.datasets?.repos) : null;
 
   return (
     <div className="app">
@@ -119,12 +152,25 @@ export default function App() {
         <span className="brand">◆ DevFolio</span>
         <form onSubmit={submit} className="search">
           <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="GitHub username" />
-          <button disabled={loading || !input.trim()}>{loading ? "Loading…" : "Load"}</button>
+          <button
+            disabled={loading || !input.trim()}
+            title="Show this user's portfolio. Uses the SQLite cache if it was synced within the last hour."
+          >
+            {loading ? "Loading…" : "View profile"}
+          </button>
         </form>
         {login && (
-          <button className="ghost" onClick={() => load(login, true)} disabled={loading} title="Bypass the SQLite cache">
-            ↻ Refresh from GitHub
-          </button>
+          <div className="sync">
+            <button
+              className="ghost"
+              onClick={() => load(login, true)}
+              disabled={loading}
+              title="Ignore the cache and download the latest data from GitHub now"
+            >
+              ↻ Sync from GitHub
+            </button>
+            <span className="muted small">Last synced {syncedAgo}</span>
+          </div>
         )}
       </nav>
 
@@ -139,46 +185,62 @@ export default function App() {
 
         {profile && (
           <>
-            {match && (
-              <div className="badge-row">
-                <MatchBadge
-                  result={match}
-                  onClick={() => document.getElementById("match-panel")?.scrollIntoView({ behavior: "smooth" })}
-                />
-              </div>
-            )}
-            <ProfileHeader profile={profile} streaks={contrib.streaks} />
-            <MatchPanel
-              jd={jd}
-              setJd={setJd}
-              result={match}
-              loading={matchLoading}
-              error={matchError}
-              onAnalyze={() => runMatch(login, jd)}
-              onCoach={runCoach}
-            />
-            <GapCoach
-              data={coach.data}
-              loading={coach.loading}
-              error={coach.error}
-              onClose={() => setCoach({ data: null, loading: false, error: "" })}
-            />
-            {contribError ? (
-              <section className="card"><h2>Contribution activity</h2><p className="muted">{contribError}</p></section>
-            ) : (
-              <ContributionGraph days={contrib.days} streaks={contrib.streaks} />
-            )}
-            <RepoGrid
-              repos={repos}
-              highlightLanguages={
-                match ? match.technologies.filter((t) => t.status !== "missing").flatMap((t) => t.languages) : []
-              }
-            />
+            <ErrorBoundary name="Profile header">
+              <ProfileHeader
+                profile={profile}
+                streaks={contrib.streaks}
+                badge={<MatchBadge result={match} loading={matchLoading} onClick={scrollToMatch} />}
+              />
+            </ErrorBoundary>
+
+            <ErrorBoundary name="Tech Stack Compatibility">
+              <MatchPanel
+                jd={jd}
+                setJd={setJd}
+                result={match}
+                loading={matchLoading}
+                error={matchError}
+                onAnalyze={() => runMatch(login, jd)}
+                onCoach={runCoach}
+              />
+            </ErrorBoundary>
+
+            <ErrorBoundary name="Gap Coach">
+              <GapCoach
+                data={coach.data}
+                loading={coach.loading}
+                error={coach.error}
+                onClose={() => setCoach(NO_COACH)}
+              />
+            </ErrorBoundary>
+
+            <ErrorBoundary name="Contribution graph">
+              {contribError ? (
+                <section className="card"><h2>Contribution activity</h2><p className="muted">{contribError}</p></section>
+              ) : (
+                <ContributionGraph days={contrib.days} streaks={contrib.streaks} />
+              )}
+            </ErrorBoundary>
+
+            <ErrorBoundary name="Repositories">
+              <RepoGrid
+                repos={repos}
+                prefs={repoPrefs}
+                onPrefsChange={updateRepoPrefs}
+                highlightLanguages={
+                  match ? match.technologies.filter((t) => t.status !== "missing").flatMap((t) => t.languages) : []
+                }
+              />
+            </ErrorBoundary>
           </>
         )}
       </main>
 
-      {profile && <ChatPanel login={login} />}
+      {profile && (
+        <ErrorBoundary name="Portfolio chat">
+          <ChatPanel login={login} />
+        </ErrorBoundary>
+      )}
 
       {cacheInfo && (
         <footer className="cache-bar">

@@ -203,3 +203,13 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
 .idea p { margin: 0; color: #c9d1d9; font-size: 13px; }
 blockquote { margin: 8px 0; padding: 12px 14px; border-left: 3px solid var(--accent); background: var(--panel-2); border-radius: 0 8px 8px 0; }
 @media (max-width: 860px) { .coach-grid { grid-template-columns: 1fr; } }
+
+/* fixes: header badge, sync indicator, fork toggle, error boundary */
+.header-badge { grid-column: 1 / -1; display: flex; justify-content: flex-end; margin: -6px -6px -10px 0; }
+.match-badge.empty-badge { --tone: var(--muted); border-style: dashed; }
+.sync { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.sync .small { font-size: 11px; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.toggle input { padding: 0; accent-color: var(--accent); }
+.alert-soft { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-color: var(--warn); }
+@media (max-width: 860px) { .header-badge { justify-content: flex-start; margin: 0; } .sync { align-items: flex-start; } }

@@ -12,8 +12,21 @@ export function badgeTone(pct) {
 }
 
 /** Circular "Match %" badge shown at the top of the profile. */
-export function MatchBadge({ result, onClick }) {
-  if (!result) return null;
+export function MatchBadge({ result, loading, onClick }) {
+  if (!result) {
+    return (
+      <button className="match-badge empty-badge" onClick={onClick} title="Paste a job description to score it">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="26" className="ring-bg" />
+          <text x="32" y="37" textAnchor="middle">{loading ? "…" : "?"}</text>
+        </svg>
+        <span>
+          <strong>{loading ? "Scoring…" : "Match %"}</strong>
+          <small>Paste a job description</small>
+        </span>
+      </button>
+    );
+  }
   const pct = result.match_percent;
   const r = 26, c = 2 * Math.PI * r;
   return (

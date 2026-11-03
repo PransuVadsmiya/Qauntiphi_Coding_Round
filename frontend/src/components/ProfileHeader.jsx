@@ -1,19 +1,21 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { langColor } from "../api";
 
-function Stat({ label, value }) {
+function Stat({ label, value, hint }) {
   return (
-    <div className="stat">
+    <div className="stat" title={hint}>
       <span className="stat-value">{value?.toLocaleString?.() ?? value}</span>
       <span className="stat-label">{label}</span>
     </div>
   );
 }
 
-export default function ProfileHeader({ profile, streaks }) {
+export default function ProfileHeader({ profile, streaks, badge }) {
   const { user, stats, top_languages: langs } = profile;
+  const forks = stats.forked_repos ?? 0;
   return (
     <section className="card header">
+      {badge && <div className="header-badge">{badge}</div>}
       <div className="identity">
         <img className="avatar" src={user.avatar_url} alt={`${user.login} avatar`} />
         <div>
@@ -35,8 +37,12 @@ export default function ProfileHeader({ profile, streaks }) {
 
       <div className="stats">
         <Stat label="Followers" value={stats.followers} />
-        <Stat label="Total stars" value={stats.total_stars} />
-        <Stat label="Repos" value={stats.public_repos} />
+        <Stat label="Total stars" value={stats.total_stars} hint="Sum of stars across original repositories" />
+        <Stat
+          label={forks > 0 ? `Repos (+${forks} fork${forks === 1 ? "" : "s"})` : "Repos"}
+          value={stats.original_repos ?? stats.public_repos}
+          hint="Original repositories; forks are counted separately and excluded from stars and languages"
+        />
         <Stat label="Current streak" value={`${streaks?.current ?? 0}d`} />
         <Stat label="Longest streak" value={`${streaks?.longest ?? 0}d`} />
       </div>

@@ -16,8 +16,15 @@ export default function ChatPanel({ login }) {
   const [busy, setBusy] = useState(false);
   const endRef = useRef(null);
 
-  useEffect(() => setMessages([]), [login]);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, busy]);
+  // Effects must return nothing (or a cleanup function), so use block bodies.
+  useEffect(() => {
+    setMessages([]);
+  }, [login]);
+  useEffect(() => {
+    // Scroll only the chat box, never the page behind it.
+    const body = endRef.current?.parentElement;
+    if (open && body) body.scrollTop = body.scrollHeight;
+  }, [messages, busy, open]);
 
   const send = async (text) => {
     const msg = text.trim();

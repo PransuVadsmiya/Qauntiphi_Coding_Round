@@ -40,10 +40,19 @@ export function RepoCard({ repo, highlighted }) {
   );
 }
 
-export default function RepoGrid({ repos, highlightLanguages = [] }) {
-  const [sort, setSort] = useState("stars");
+/**
+ * prefs = { sort, language, showForks } is persisted in the SQLite `settings`
+ * table through onPrefsChange, so the view is remembered per user.
+ */
+export default function RepoGrid({ repos, highlightLanguages = [], prefs = {}, onPrefsChange = () => {} }) {
+  const sort = prefs.sort || "stars";
+  const lang = prefs.language || "All";
+  const showForks = !!prefs.showForks;
   const [query, setQuery] = useState("");
-  const [lang, setLang] = useState("All");
+  const setPref = (key, value) => onPrefsChange({ ...prefs, [key]: value });
+
+  const originals = repos.filter((r) => !r.is_fork).length;
+  const forks = repos.length - originals;
 
   const languages = useMemo(
     () => ["All", ...new Set(repos.map((r) => r.language).filter(Boolean))],
@@ -54,6 +63,7 @@ export default function RepoGrid({ repos, highlightLanguages = [] }) {
     const q = query.toLowerCase();
     const list = repos.filter(
       (r) =>
+        (showForks || !r.is_fork) &&
         (lang === "All" || r.language === lang) &&
         (!q || r.name.toLowerCase().includes(q) || (r.description || "").toLowerCase().includes(q))
     );
@@ -64,18 +74,28 @@ export default function RepoGrid({ repos, highlightLanguages = [] }) {
       name: (a, b) => a.name.localeCompare(b.name),
     };
     return [...list].sort(sorters[sort]);
-  }, [repos, sort, query, lang]);
+  }, [repos, sort, query, lang, showForks]);
 
   return (
     <section>
       <div className="section-head">
-        <h2>Repositories <span className="muted">({shown.length})</span></h2>
+        <h2>
+          Repositories <span className="muted">
+            (showing {shown.length} · {originals} original{forks > 0 ? `, ${forks} fork${forks === 1 ? "" : "s"}` : ""})
+          </span>
+        </h2>
         <div className="controls">
           <input placeholder="Search repos…" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <select value={lang} onChange={(e) => setLang(e.target.value)}>
+          {forks > 0 && (
+            <label className="toggle">
+              <input type="checkbox" checked={showForks} onChange={(e) => setPref("showForks", e.target.checked)} />
+              Show forks
+            </label>
+          )}
+          <select value={lang} onChange={(e) => setPref("language", e.target.value)}>
             {languages.map((l) => <option key={l}>{l}</option>)}
           </select>
-          <select value={sort} onChange={(e) => setSort(e.target.value)}>
+          <select value={sort} onChange={(e) => setPref("sort", e.target.value)}>
             <option value="stars">Most stars</option>
             <option value="forks">Most forks</option>
             <option value="updated">Recently updated</option>

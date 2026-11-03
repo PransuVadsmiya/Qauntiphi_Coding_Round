@@ -4,23 +4,60 @@ A personal-branding dashboard that visualizes a developer's GitHub activity, rep
 
 Built for the Quantiphi Analytics vibe coding round.
 
-## Features
+## Requirements checklist
 
-### Core
-| Requirement | Implementation |
+| Requirement from the problem statement | Status | Where it lives |
+|---|---|---|
+| **Contribution graph**: heatmap of daily coding activity, coloured by intensity | ✅ | `ContributionGraph.jsx`. 53 × 7 grid, 5 intensity levels from GitHub's quartiles, hover details, current/longest streak, active days |
+| **Repository cards**: star count, fork count, language tag, short description | ✅ | `RepoGrid.jsx`. Also topics and last push; search, language filter, sort, show/hide forks |
+| **Profile header**: follower count, total stars, "Top Languages" pie chart | ✅ | `ProfileHeader.jsx`. Total stars summed over original repos; donut chart weighted by bytes of code |
+| **API integration**: GitHub REST/GraphQL | ✅ | `github_client.py`. REST for profile, repos, per-repo languages; GraphQL for the contribution calendar |
+| **Caching engine**: SQLite caches repo metadata and user settings | ✅ | `db.py`, `cache.py`, `services/sync.py`. TTL + ETag cache; settings table stores repo view preferences and the last job description per user |
+| **Vibe Check**: user inputs a job description | ✅ | `MatchPanel.jsx` |
+| Backend compares JD keywords against the languages of the user's **cached** repositories | ✅ | `services/match.py` reads `repo_languages` from SQLite, with no GitHub call (covered by a test) |
+| Generates a **"Match Percentage" badge at the top of the profile** | ✅ | `MatchBadge`, top-right of the profile header; shows a placeholder until a JD is scored |
+| **Two extra chatbot-based features**, suggested and included | ✅ | Ask my Portfolio + JD Gap Coach (see below) |
+
+## Core features
+
+| Feature | Implementation |
 |---|---|
-| **Contribution graph** | GitHub-style heatmap of the last year (53 × 7 grid), coloured by intensity level 0–4, with hover details, current streak, longest streak and active days |
-| **Repository cards** | Stars, forks, language tag (GitHub colours), description, topics and last push; searchable, filterable by language, sortable |
-| **Profile header** | Avatar, bio, followers, **total stars** (summed over original repos, forks excluded), repo count, streaks, and a **Top Languages** donut chart weighted by bytes of code |
-| **API integration** | GitHub **REST** (profile, repos, per-repo languages) + **GraphQL** (contribution calendar) |
+| **Contribution graph** | GitHub-style heatmap of the last year, coloured by intensity level 0–4, with hover details, current streak, longest streak and active days |
+| **Repository cards** | Stars, forks, language tag (GitHub colours), description, topics and last push; searchable, filterable by language, sortable, with a "Show forks" toggle. Your view preferences are saved in SQLite |
+| **Profile header** | Avatar, bio, followers, **total stars** (summed over original repos, forks excluded), repo count (originals + forks shown separately), streaks, and a **Top Languages** donut chart weighted by bytes of code |
+| **API integration** | GitHub **REST** + **GraphQL** |
 | **Caching engine** | **SQLite** caches profile, repo metadata, languages, contributions and user settings (see below) |
-| **Tech Stack Compatibility** | Paste a job description → backend extracts tech keywords and compares them with the languages in the **cached** repos → circular **Match %** badge at the top of the profile plus a per-technology breakdown |
+| **Tech Stack Compatibility** | Paste a job description → backend extracts tech keywords and compares them with the languages in the **cached** repos → circular **Match %** badge at the top of the profile plus a per-technology breakdown. Matching repo cards are highlighted |
 
-### Extra features (chatbot-powered)
-1. **💬 Ask my Portfolio**: a floating chatbot where a recruiter can ask *"Has this developer worked with ML?"* or *"Which project shows backend skills?"*. Answers are grounded only in the cached portfolio data (a small RAG over SQLite), so they're accurate and cost no GitHub API calls.
-2. **✨ JD Gap Coach**: after scoring a JD, the coach summarises the fit, lists strengths and gaps, suggests 2–3 projects to close the gaps, and drafts a tailored pitch to send the recruiter.
+### "View profile" vs "Sync from GitHub"
+- **View profile** loads the username in the search box. If that user was synced within the cache TTL (1 hour by default) everything is served from SQLite: instant, zero GitHub API calls.
+- **↻ Sync from GitHub** ignores the cache and re-downloads the latest profile, repos, languages and contributions right now, then updates SQLite. Use it after pushing new code. "Last synced …" under the button shows how fresh the cached data is.
 
-Both work with **Gemini, Groq or OpenAI**. With no LLM key they fall back to rule-based answers, so the app never breaks.
+## Suggested extra features (chatbot capabilities)
+
+The problem statement asks us to suggest and include two features beyond the spec. Both build on what chatbots are good at: answering free-form questions about a body of data, and turning analysis into tailored advice and writing.
+
+### 1. 💬 Ask my Portfolio: a recruiter Q&A chatbot
+**What it does:** A floating chat on the profile page. A recruiter can ask *"Has this developer worked with machine learning?"*, *"Which project best shows backend experience?"* or *"How active have they been recently?"* and get a short, specific answer naming repos, languages and numbers.
+
+**Why we suggested it:** Recruiters skim. A portfolio page that answers their exact question turns a static page into a conversation, which is the core capability of a chatbot.
+
+**How it works:** A small retrieval-augmented setup over our own cache. `portfolio_context.py` builds a compact snapshot (profile, language shares, streaks, every repo's language, stars, topics and description) from SQLite. That snapshot becomes the LLM's only context, with instructions to answer strictly from it and admit when the data doesn't show something, so answers stay grounded and cost zero GitHub API calls. Conversation history is kept so follow-up questions work. Each reply is tagged *AI* or *rule-based*.
+
+### 2. ✨ JD Gap Coach: career advice from the match score
+**What it does:** After a job description is scored, one click produces a fit summary, the developer's **strengths** for this role (with the repos that prove them), the **gaps** and why they matter, **2–3 concrete project ideas** to close them (ideally extending an existing repo), and a **tailored pitch** to send the recruiter, with a copy button.
+
+**Why we suggested it:** The Match % says *how well* someone fits; the coach answers *what to do about it*. It turns a number into an action plan and a ready-to-send message: reasoning plus writing, which is what LLMs do best.
+
+**How it works:** `gap_coach.py` sends the portfolio snapshot and the structured match breakdown to the LLM and asks for strict JSON (summary, strengths, gaps, project_ideas, pitch), which the UI renders as cards.
+
+### Works with or without an LLM
+Both features support **Gemini, Groq or OpenAI** (`LLM_PROVIDER` + `LLM_API_KEY` in `.env`). With no key, or if the LLM call fails, they fall back to rule-based logic: keyword/intent matching for the chatbot and templated advice and project ideas for the coach. The demo never breaks.
+
+### Other ideas considered
+- **AI README / bio writer** that drafts a profile README from the cached repos.
+- **Repo-level "explain this project"** summaries for non-technical recruiters.
+- **Weekly activity digest** summarising what changed since the last sync.
 
 ## How the caching engine works
 

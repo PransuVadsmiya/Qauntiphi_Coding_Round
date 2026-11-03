@@ -17,7 +17,7 @@ async function request(path, options = {}) {
 export const api = {
   health: () => request("/health"),
   profile: (login, refresh = false) => request(`/profile/${login}?refresh=${refresh}`),
-  repos: (login, sort = "stars") => request(`/repos/${login}?sort=${sort}`),
+  repos: (login) => request(`/repos/${login}?include_forks=true`),
   contributions: (login, refresh = false) => request(`/contributions/${login}?refresh=${refresh}`),
   refresh: (login) => request(`/refresh/${login}`, { method: "POST" }),
   cache: (login) => request(`/cache/${login}`),
